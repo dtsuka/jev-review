@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.jev-review/
+.env
+.env.*
+!.env.example
+.DS_Store
