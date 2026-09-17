@@ -3,6 +3,7 @@ import { CHECKS, type CheckName } from './types.js';
 
 export type FileKind = 'test' | 'style' | 'types' | 'bridge' | 'source';
 
+/** Classify a source path so review checks can account for the file's role. */
 export function classifyFile(file: string): FileKind {
   const normalized = file.replaceAll('\\', '/').toLowerCase();
   const base = path.posix.basename(normalized);
@@ -13,6 +14,7 @@ export function classifyFile(file: string): FileKind {
   return 'source';
 }
 
+/** Limit the requested checks to those that are meaningful for the file's kind. */
 export function checksForFile(file: string, requested: CheckName[]): CheckName[] {
   const kind = classifyFile(file);
   const allowed: Record<FileKind, readonly CheckName[]> = {
@@ -25,6 +27,7 @@ export function checksForFile(file: string, requested: CheckName[]): CheckName[]
   return requested.filter((check) => allowed[kind].includes(check));
 }
 
+/** Describe file-kind-specific guidance to include in the review context. */
 export function policyContext(file: string): string {
   const kind = classifyFile(file);
   if (kind === 'test') return 'This is test code. Intentional casts, malformed fixtures, mocks, and negative-test inputs are not production defects unless they invalidate the test itself.';
