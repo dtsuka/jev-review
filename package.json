@@ -8,20 +8,12 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/cli.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "benchmark": "tsx scripts/benchmark.ts"
+    "benchmark": "tsx scripts/benchmark.ts",
+    "benchmark:v2": "tsx scripts/benchmark-v2.ts"
   },
   "engines": { "node": ">=20" },
-  "dependencies": {
-    "@typesafe-ai/sdk": "^0.6.0",
-    "commander": "^14.0.1",
-    "globby": "^16.2.4",
-    "picocolors": "^1.1.1"
-  },
-  "devDependencies": {
-    "@types/node": "^24.3.1",
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
-  },
+  "dependencies": { "@typesafe-ai/sdk": "^0.6.0", "commander": "^14.0.1", "globby": "^16.2.4", "picocolors": "^1.1.1" },
+  "devDependencies": { "@types/node": "^24.3.1", "tsx": "^4.20.5", "typescript": "^5.9.2" },
   "files": ["dist"],
   "keywords": ["jev", "code-review", "security", "ai"],
   "license": "MIT"
