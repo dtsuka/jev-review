@@ -1,12 +1,13 @@
 import path from 'node:path';
 import { CHECKS, type CheckName } from './types.js';
 
-export type FileKind = 'test' | 'style' | 'types' | 'bridge' | 'source';
+export type FileKind = 'test' | 'style' | 'types' | 'bridge' | 'patch' | 'source';
 
 /** Classify a source path so review checks can account for the file's role. */
 export function classifyFile(file: string): FileKind {
   const normalized = file.replaceAll('\\', '/').toLowerCase();
   const base = path.posix.basename(normalized);
+  if (/\.(patch|diff)$/.test(base)) return 'patch';
   if (/(^|\/)(tests?|__tests__|spec)(\/|$)/.test(normalized) || /\.(test|spec)\.[^.]+$/.test(base)) return 'test';
   if (/\.(css|scss|sass|less)$/.test(base)) return 'style';
   if (/(^|[-_.])(types?|interfaces?)([-_.]|$)/.test(base) || base.endsWith('.d.ts')) return 'types';
@@ -19,6 +20,7 @@ export function checksForFile(file: string, requested: CheckName[]): CheckName[]
   const kind = classifyFile(file);
   const allowed: Record<FileKind, readonly CheckName[]> = {
     source: CHECKS,
+    patch: ['bug', 'security', 'error_handling', 'type_safety', 'performance'],
     test: ['bug', 'error_handling'],
     style: ['bug', 'performance', 'refactor'],
     types: ['bug', 'type_safety', 'refactor'],
@@ -30,6 +32,7 @@ export function checksForFile(file: string, requested: CheckName[]): CheckName[]
 /** Describe file-kind-specific guidance to include in the review context. */
 export function policyContext(file: string): string {
   const kind = classifyFile(file);
+  if (kind === 'patch') return 'This file is a unified diff/patch, not ordinary source. Evaluate the behavior introduced by added lines together with surrounding context. Removed lines describe prior behavior and must not be treated as current code. Pay special attention to changed input parsing, authentication, validation, filesystem/process boundaries, and error paths. A defect introduced by the patch counts as a real issue even if the patch is not compiled directly.';
   if (kind === 'test') return 'This is test code. Intentional casts, malformed fixtures, mocks, and negative-test inputs are not production defects unless they invalidate the test itself.';
   if (kind === 'style') return 'This is stylesheet code. Do not infer executable type-safety or application error-handling defects from CSS.';
   if (kind === 'types') return 'This is primarily a types/interfaces module. Judge concrete contract or type-safety risks, not the mere presence of type assertions.';
