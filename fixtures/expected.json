@@ -1,0 +1,16 @@
+{
+  "security/sql-injection.ts": { "security": true },
+  "security/auth-bypass.ts": { "security": true },
+  "bugs/missing-await.ts": { "bug": true },
+  "bugs/off-by-one.ts": { "bug": true },
+  "type-safety/unsafe-cast.ts": { "type_safety": true },
+  "error-handling/swallowed-error.ts": { "error_handling": true },
+  "performance/quadratic.ts": { "performance": true },
+  "refactor/complex-function.ts": { "refactor": true },
+  "clean/user-service.ts": {
+    "bug": false, "security": false, "refactor": false, "performance": false, "error_handling": false, "type_safety": false
+  },
+  "clean/validation.ts": {
+    "bug": false, "security": false, "refactor": false, "performance": false, "error_handling": false, "type_safety": false
+  }
+}
