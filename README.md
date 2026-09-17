@@ -19,8 +19,9 @@ Requires Node.js 20+ and TypeSafe AI API access.
 
 ```bash
 pnpm install
+cp .env.example .env
+# Edit .env and set TYPESAFE_API_KEY.
 pnpm build
-export TYPESAFE_API_KEY="..."
 ```
 
 ## Usage
@@ -72,7 +73,7 @@ For security-sensitive projects, use this alongside deterministic tools such as 
 TYPESAFE_API_KEY=...
 ```
 
-Do not commit API keys.
+The CLI and benchmark commands automatically load `.env` from the current working directory. Existing shell environment variables take precedence. Do not commit API keys.
 
 ## License
 
