@@ -6,6 +6,7 @@ const DEFAULT_EXTENSIONS = [
   'js', 'jsx', 'mjs', 'cjs', 'ts', 'tsx', 'mts', 'cts',
   'py', 'php', 'rb', 'go', 'rs', 'java', 'kt', 'kts', 'cs',
   'vue', 'svelte', 'astro', 'css', 'scss', 'sql', 'sh',
+  'patch', 'diff',
 ];
 
 const IGNORE = [
