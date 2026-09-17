@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import fg from 'fast-glob';
+import { globby } from 'globby';
 
 const DEFAULT_EXTENSIONS = [
   'js', 'jsx', 'mjs', 'cjs', 'ts', 'tsx', 'mts', 'cts',
@@ -17,7 +17,7 @@ const IGNORE = [
 
 export async function collectFiles(root: string): Promise<string[]> {
   const pattern = `**/*.{${DEFAULT_EXTENSIONS.join(',')}}`;
-  return fg(pattern, {
+  return globby(pattern, {
     cwd: root,
     absolute: true,
     onlyFiles: true,

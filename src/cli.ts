@@ -16,7 +16,7 @@ const program = new Command()
   .option('-c, --checks <checks>', 'comma-separated checks')
   .option('--max-files <number>', 'maximum number of files to scan')
   .option('--concurrency <number>', 'parallel Jev requests', '4')
-  .parse();
+  .parse(withoutPnpmSeparator(process.argv));
 
 const directory = path.resolve(program.args[0] ?? '.');
 const options = program.opts();
@@ -77,6 +77,7 @@ const attention = results.filter((r) => Object.values(r.scores).some((score) => 
 const errors = results.filter((r) => r.error);
 console.log(`\n${pc.bold('Summary')}: ${results.length} scanned, ${pc.yellow(String(attention.length))} need attention, ${errors.length} errors`);
 console.log(pc.dim(`Report: ${path.relative(process.cwd(), path.join(outputDir, 'report.json'))}`));
+if (errors.length > 0) process.exitCode = 1;
 
 function parseChecks(input?: string): CheckName[] {
   if (!input) return [...CHECKS];
@@ -98,4 +99,8 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
   return results;
+}
+
+function withoutPnpmSeparator(argv: string[]): string[] {
+  return argv[2] === '--' ? [...argv.slice(0, 2), ...argv.slice(3)] : argv;
 }

@@ -1,6 +1,5 @@
+import { noul, TypeSafeClient } from '@typesafe-ai/sdk';
 import type { CheckName } from './types.js';
-
-const API_URL = 'https://api.typesafe.ai/v1/systemone';
 
 const QUESTIONS: Record<CheckName, string> = {
   bug: 'Does this file contain an issue likely to cause incorrect runtime behavior or a real malfunction?',
@@ -25,58 +24,17 @@ export async function reviewWithJev(args: {
     `SOURCE:\n${args.source}`,
   ].filter(Boolean).join('\n\n');
 
-  const questions = Object.fromEntries(
-    args.checks.map((check) => [check, { type: 'boolean', description: QUESTIONS[check] }]),
-  );
-
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'authorization': `Bearer ${args.apiKey}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ model: 'jev-latest', state, questions }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Jev API ${response.status}: ${await response.text()}`);
-  }
-
-  const data = await response.json() as Record<string, unknown>;
-  const answers = ((data.answers ?? data.output ?? data.results ?? data) as Record<string, unknown>);
+  const client = new TypeSafeClient({ apiKey: args.apiKey });
+  const questions = Object.fromEntries(args.checks.map((check) => [check, noul(QUESTIONS[check])]));
+  const { answers } = await client.systemOne({ model: 'jev-latest', state, questions });
   const scores: Partial<Record<CheckName, number>> = {};
 
   for (const check of args.checks) {
-    const raw = answers[check];
-    const score = extractYesProbability(raw);
-    if (score === undefined) {
-      throw new Error(`Unexpected Jev response for ${check}: ${JSON.stringify(raw)}`);
+    const answer = answers[check];
+    if (!answer || answer.type !== 'noul') {
+      throw new Error(`Unexpected Jev response for ${check}: ${JSON.stringify(answer)}`);
     }
-    scores[check] = score;
+    scores[check] = answer.noul;
   }
   return scores;
-}
-
-function extractYesProbability(value: unknown): number | undefined {
-  if (typeof value === 'number') return normalize(value);
-  if (!value || typeof value !== 'object') return undefined;
-  const obj = value as Record<string, unknown>;
-  for (const key of ['yes', 'true', 'probability', 'p', 'confidence']) {
-    if (typeof obj[key] === 'number') return normalize(obj[key] as number);
-  }
-  if (obj.probabilities && typeof obj.probabilities === 'object') {
-    const probs = obj.probabilities as Record<string, unknown>;
-    for (const key of ['yes', 'true', 'Yes', 'True']) {
-      if (typeof probs[key] === 'number') return normalize(probs[key] as number);
-    }
-  }
-  if (typeof obj.value === 'boolean' && typeof obj.confidence === 'number') {
-    const confidence = normalize(obj.confidence);
-    return obj.value ? confidence : 1 - confidence;
-  }
-  return undefined;
-}
-
-function normalize(n: number): number {
-  return n > 1 ? n / 100 : n;
 }
