@@ -13,6 +13,7 @@
     "evaluate": "tsx scripts/evaluate.ts",
     "stability": "tsx scripts/stability.ts",
     "handoff": "tsx scripts/handoff.ts",
+    "selected-files": "tsx scripts/selected-files.ts",
     "evaluate:handoff": "tsx scripts/evaluate-handoff.ts",
     "evaluate:attention": "tsx scripts/evaluate-attention.ts"
   },
