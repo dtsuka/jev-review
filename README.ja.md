@@ -70,16 +70,141 @@ jev-review . --threshold 0.8
 
 ## Codex Skill
 
-Skill をインストールした後は、Codex で `$jev-review` を明示的に呼び出すか、プロジェクト全体の Jev レビューを依頼して Skill の description にマッチさせます。
+jev-review は **Codex Skill として使う方法を推奨**しています。一度セットアップすれば、Codex から Skill を呼び出すだけで、Jev によるスクリーニングから対象ファイルの詳細レビューまでを一連のワークフローとして実行できます。
 
-Skill は次の処理を行います。
+### 1. CLI と Skill をインストールする
 
-1. Jev でリポジトリをスクリーニング
-2. 本番用の category handoff だけを読み込む
-3. 選択されたファイル全体を、指定カテゴリを重点的に詳細レビュー
-4. `.jev-review/category-verified-report.json` に結果を書き出す
+まず、このリポジトリを clone して依存関係をインストールします。
 
-詳細なワークフローは `skills/jev-review/SKILL.md`、詳細レビューの契約は `skills/jev-review/references/category-review.md` を参照してください。
+```bash
+git clone https://github.com/dtsuka/jev-review.git
+cd jev-review
+
+pnpm install
+cp .env.example .env
+# .env を編集して TYPESAFE_API_KEY を設定
+
+pnpm build
+```
+
+次に、`jev-review` コマンドをどのプロジェクトからでも実行できるようにし、Codex Skill をインストールします。
+
+```bash
+pnpm link --global
+bash scripts/install-skill.sh
+```
+
+インストーラーは次のシンボリックリンクを作成します。
+
+```text
+~/.agents/skills/jev-review
+  -> <このリポジトリのパス>/skills/jev-review
+```
+
+Skill 本体をコピーするのではなく、このリポジトリへのシンボリックリンクを作ります。そのため、jev-review を `git pull` で更新すると Skill 側にもそのまま反映されます。
+
+新しくインストールした Skill が Codex に表示されない場合は、Codex を再起動してください。
+
+CLI が正しくインストールされたかは、次のコマンドで単独確認できます。
+
+```bash
+jev-review --help
+```
+
+### 2. レビューしたいプロジェクトで使う
+
+レビュー対象のリポジトリを Codex で開きます。**対象プロジェクトに jev-review をコピーする必要はありません。**
+
+Codex で Skill を明示的に呼び出します。
+
+```text
+$jev-review このプロジェクトをレビューして
+```
+
+たとえば、次のような指示も可能です。
+
+```text
+$jev-review このリポジトリの具体的なバグとセキュリティ上の問題をレビューして
+```
+
+Skill 名を書かずに「このプロジェクトを Jev でレビューして」のように依頼した場合も、Codex が Skill の description から自動選択することがあります。ただし、**確実に jev-review のワークフローを使いたい場合は `$jev-review` を明示するのがおすすめです。**
+
+### 3. Skill 実行時に何が起きるか
+
+Codex は以下の流れを自動的に実行します。
+
+```text
+レビュー対象リポジトリ
+        |
+        v
+   jev-review .
+        |
+        +-- .jev-review/report.json
+        |
+        +-- .jev-review/category-handoff.json
+                        |
+                        v
+                 Codex 詳細レビュー
+                 - 選択されたファイル全体を読む
+                 - 指定カテゴリを重点的に調査
+                 - 必要な依存先や周辺コードだけを追う
+                 - Jev のスコアを問題の根拠にしない
+                 - Jev が疑った chunk の位置は見ない
+                        |
+                        v
+        .jev-review/category-verified-report.json
+                        |
+                        v
+                 ユーザーへ finding を報告
+```
+
+この役割分担が jev-review の中心となる設計です。
+
+- **Jev** — どのファイルを、どのカテゴリで重点的に調べるべきかを決める
+- **Codex** — 選択されたファイル全体を読み、実際に問題が存在するかを検証して原因を説明する
+
+Jev が高いスコアを付けたこと自体を finding の根拠にはしません。
+
+### 4. 対象プロジェクトに生成されるファイル
+
+Skill を実行すると、レビュー対象リポジトリに `.jev-review/` ディレクトリが作られます。
+
+本番ワークフローで重要なのは次の3ファイルです。
+
+- `report.json` — Jev の完全なスクリーニング結果。診断には利用できますが、詳細レビュアーはこのスコアを問題の根拠として利用しません。
+- `category-handoff.json` — Jev と Codex の境界となるデータ。選択されたファイル名とレビューカテゴリだけを含みます。
+- `category-verified-report.json` — Codex がファイル全体を調査した後に生成する具体的な finding。
+
+実際のレビューでは、baseline、stability、過去の verification、実験用 evaluation などを Codex が参照しないよう Skill 側で指示しています。
+
+### 更新方法
+
+Skill はシンボリックリンクなので、通常はリポジトリを更新するだけです。
+
+```bash
+cd /path/to/jev-review
+git pull
+pnpm install
+pnpm build
+```
+
+シンボリックリンクが残っていれば、`scripts/install-skill.sh` を再実行する必要はありません。
+
+### アンインストール
+
+Codex Skill だけを削除する場合は、シンボリックリンクを削除します。
+
+```bash
+rm ~/.agents/skills/jev-review
+```
+
+グローバルにリンクした CLI も不要な場合は、あわせて次を実行します。
+
+```bash
+pnpm unlink --global jev-review
+```
+
+Skill 自体のワークフローは `skills/jev-review/SKILL.md`、詳細レビューの出力仕様は `skills/jev-review/references/category-review.md` を参照してください。
 
 ## なぜ「ファイル + カテゴリ」なのか
 
