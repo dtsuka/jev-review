@@ -1,5 +1,7 @@
 # jev-review
 
+[日本語版 README](README.ja.md)
+
 Project-wide code-review triage powered by TypeSafe AI's Jev System One model, designed to hand a smaller, focused set of files to Codex or another deep reviewer.
 
 The production workflow is:
