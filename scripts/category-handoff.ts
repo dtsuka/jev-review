@@ -1,3 +1,22 @@
-import { readFile,writeFile,mkdir } from 'node:fs/promises';import path from 'node:path';
-type FileResult={file:string;scores:Record<string,number>;error?:string;forceReview?:boolean};type Report={version:number;generatedAt:string;checks:string[];thresholds:Record<string,number>;files:FileResult[]};
-const root=path.resolve(process.argv[2]??'.'),dir=path.join(root,'.jev-review'),report:Report=JSON.parse(await readFile(path.join(dir,'report.json'),'utf8'));const files=report.files.filter(f=>f.forceReview||f.error||Object.entries(f.scores).some(([c,s])=>s>=(report.thresholds[c]??1))).map(f=>({file:f.file,categories:f.forceReview||f.error?report.checks:Object.entries(f.scores).filter(([c,s])=>s>=(report.thresholds[c]??1)).map(([c])=>c)}));const output={version:1,generatedAt:new Date().toISOString(),sourceReportGeneratedAt:report.generatedAt,files};await mkdir(dir,{recursive:true});await writeFile(path.join(dir,'category-handoff.json'),JSON.stringify(output,null,2)+'\n');console.log(`Category-only handoff: ${files.length}/${report.files.length} files`);console.log('Handoff: .jev-review/category-handoff.json');
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { writeCategoryHandoff } from '../src/category-handoff.js';
+import type { ReviewReport } from '../src/types.js';
+
+const root = path.resolve(process.argv[2] ?? '.');
+const report: ReviewReport = JSON.parse(
+  await readFile(path.join(root, '.jev-review', 'report.json'), 'utf8'),
+);
+const outputPath = await writeCategoryHandoff(root, report);
+const selected = report.files.filter(
+  (file) =>
+    file.forceReview ||
+    file.error ||
+    Object.entries(file.scores).some(
+      ([category, score]) =>
+        (score ?? 0) >= (report.thresholds[category as keyof typeof report.thresholds] ?? 1),
+    ),
+);
+
+console.log(`Category-only handoff: ${selected.length}/${report.files.length} files`);
+console.log(`Handoff: ${path.relative(process.cwd(), outputPath)}`);
