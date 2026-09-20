@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jev Review"
+  short_description: "Jev triage followed by focused full-file code review"
+  default_prompt: "Review this repository with Jev Review and report concrete findings."
