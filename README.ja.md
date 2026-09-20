@@ -72,11 +72,15 @@ jev-review . --threshold 0.8
 
 `category-handoff.json` は CLI 実行時に自動生成されます。既存のレポートから再生成したい場合は `pnpm category-handoff <project>` も利用できます。
 
-## Codex Skill
+## Agent Skills
 
-jev-review は **Codex Skill として使う方法を推奨**しています。一度セットアップすれば、Codex から Skill を呼び出すだけで、Jev によるスクリーニングから対象ファイルの詳細レビューまでを一連のワークフローとして実行できます。
+jev-review は **Agent Skill** として利用できる形でパッケージ化しています。対応するコーディングエージェントで、Jev によるスクリーニングから対象ファイルの詳細レビューまでを同じワークフローとして再利用できます。
 
-### 1. CLI と Skill をインストールする
+Skill 本体は `SKILL.md` を中心とした汎用的な Agent Skills 形式です。インストール場所や呼び出し方は利用するエージェントによって異なります。
+
+以下では、現在インストール方法を確認できている **Codex** を具体例として説明します。Claude Code など、Agent Skills に対応する他のツールでも `skills/jev-review/` の Skill パッケージを利用する想定です。
+
+### 1. CLI をインストールする
 
 まず、このリポジトリを clone して依存関係をインストールします。
 
@@ -91,10 +95,21 @@ cp .env.example .env
 pnpm build
 ```
 
-次に、`jev-review` コマンドをどのプロジェクトからでも実行できるようにし、Codex Skill をインストールします。
+次に、`jev-review` コマンドをどのプロジェクトからでも実行できるようにします。
 
 ```bash
 pnpm link --global
+```
+
+Skill 本体は `skills/jev-review/` にあります。
+
+### 2. コーディングエージェントに Skill をインストールする
+
+#### Codex
+
+付属のインストーラーを実行します。
+
+```bash
 bash scripts/install-skill.sh
 ```
 
@@ -115,11 +130,17 @@ CLI が正しくインストールされたかは、次のコマンドで単独�
 jev-review --help
 ```
 
-### 2. レビューしたいプロジェクトで使う
+#### その他の Agent Skills 対応ツール
 
-レビュー対象のリポジトリを Codex で開きます。**対象プロジェクトに jev-review をコピーする必要はありません。**
+`skills/jev-review/` を Skill ディレクトリとして、各エージェントの Agent Skills のインストール方法に従って配置またはリンクします。
 
-Codex で Skill を明示的に呼び出します。
+コアとなるワークフローは `SKILL.md` と `references/category-review.md` に定義されています。`agents/openai.yaml` は OpenAI 製品向けの追加メタデータで、Skill のコアワークフロー自体には必須ではありません。
+
+### 3. レビューしたいプロジェクトで使う
+
+レビュー対象のリポジトリを利用するコーディングエージェントで開きます。**対象プロジェクトに jev-review をコピーする必要はありません。**
+
+Codex の場合は Skill を次のように明示的に呼び出します。
 
 ```text
 $jev-review このプロジェクトをレビューして
@@ -133,9 +154,11 @@ $jev-review このリポジトリの具体的なバグとセキュリティ上�
 
 Skill 名を書かずに「このプロジェクトを Jev でレビューして」のように依頼した場合も、Codex が Skill の description から自動選択することがあります。ただし、**確実に jev-review のワークフローを使いたい場合は `$jev-review` を明示するのがおすすめです。**
 
-### 3. Skill 実行時に何が起きるか
+Claude Code など他の対応エージェントでは、そのエージェントがサポートする Skill の呼び出し方法を使用します。
 
-Codex は以下の流れを自動的に実行します。
+### 4. Skill 実行時に何が起きるか
+
+コーディングエージェントは以下の流れで処理します。
 
 ```text
 レビュー対象リポジトリ
@@ -148,7 +171,7 @@ Codex は以下の流れを自動的に実行します。
         +-- .jev-review/category-handoff.json
                         |
                         v
-                 Codex 詳細レビュー
+                 コーディングエージェントによる詳細レビュー
                  - 選択されたファイル全体を読む
                  - 指定カテゴリを重点的に調査
                  - 必要な依存先や周辺コードだけを追う
@@ -165,21 +188,21 @@ Codex は以下の流れを自動的に実行します。
 この役割分担が jev-review の中心となる設計です。
 
 - **Jev** — どのファイルを、どのカテゴリで重点的に調べるべきかを決める
-- **Codex** — 選択されたファイル全体を読み、実際に問題が存在するかを検証して原因を説明する
+- **詳細レビュアー** — 選択されたファイル全体を読み、実際に問題が存在するかを検証して原因を説明する
 
 Jev が高いスコアを付けたこと自体を finding の根拠にはしません。
 
-### 4. 対象プロジェクトに生成されるファイル
+### 5. 対象プロジェクトに生成されるファイル
 
 Skill を実行すると、レビュー対象リポジトリに `.jev-review/` ディレクトリが作られます。
 
 本番ワークフローで重要なのは次の3ファイルです。
 
 - `report.json` — Jev の完全なスクリーニング結果。診断には利用できますが、詳細レビュアーはこのスコアを問題の根拠として利用しません。
-- `category-handoff.json` — Jev と Codex の境界となるデータ。選択されたファイル名とレビューカテゴリだけを含みます。
-- `category-verified-report.json` — Codex がファイル全体を調査した後に生成する具体的な finding。
+- `category-handoff.json` — Jev と詳細レビュアーの境界となるデータ。選択されたファイル名とレビューカテゴリだけを含みます。
+- `category-verified-report.json` — 詳細レビュアーがファイル全体を調査した後に生成する具体的な finding。
 
-実際のレビューでは、baseline、stability、過去の verification、実験用 evaluation などを Codex が参照しないよう Skill 側で指示しています。
+実際のレビューでは、baseline、stability、過去の verification、実験用 evaluation などを 詳細レビュアーが参照しないよう Skill 側で指示しています。
 
 ### 更新方法
 
@@ -196,7 +219,7 @@ pnpm build
 
 ### アンインストール
 
-Codex Skill だけを削除する場合は、シンボリックリンクを削除します。
+Codex にインストールした Skill だけを削除する場合は、シンボリックリンクを削除します。
 
 ```bash
 rm ~/.agents/skills/jev-review
