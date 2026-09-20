@@ -2,7 +2,11 @@
 
 [日本語版 README](README.ja.md)
 
-Project-wide code-review triage powered by TypeSafe AI's Jev System One model, designed to hand a smaller, focused set of files to Codex or another deep reviewer.
+A tool for quickly screening an entire project and finding the parts that need deeper review.
+
+Instead of asking a detailed reviewer to inspect every file from the start, **Jev** screens the project first and narrows the review down to the files and categories that deserve attention. Those selected areas can then be handed to deep reviewers such as **Codex or Claude Code**.
+
+It can also be installed as a **Skill for Codex or Claude Code**, making it easy to use as part of your normal development workflow: run Jev first, then spend detailed-review effort only where it is needed.
 
 The production workflow is:
 
