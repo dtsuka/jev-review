@@ -72,11 +72,13 @@ A scan writes:
 
 The category handoff is generated automatically by the CLI. `pnpm category-handoff <project>` remains available for regenerating it from an existing report.
 
-## Codex Skill
+## Agent Skills
 
-The recommended way to use jev-review is as a Codex Skill. Once installed, Codex can run the Jev screening step and the focused deep review as one workflow.
+jev-review is packaged as an **Agent Skill**, so compatible coding agents can reuse the same screening → deep-review workflow. The Skill itself follows the portable `SKILL.md`-based Agent Skills format; installation and invocation details depend on the agent you use.
 
-### 1. Install the CLI and Skill
+The instructions below use **Codex** as the currently documented setup example. The same Skill package is intended to be usable by other Agent Skills-compatible tools, including Claude Code, using that tool's Skill installation and invocation conventions.
+
+### 1. Install the CLI
 
 Clone this repository and install its dependencies:
 
@@ -91,14 +93,25 @@ cp .env.example .env
 pnpm build
 ```
 
-Make the `jev-review` command available globally, then install the Skill:
+Make the `jev-review` command available globally:
 
 ```bash
 pnpm link --global
+```
+
+The Skill package itself lives at `skills/jev-review/`.
+
+### 2. Install the Skill in your coding agent
+
+#### Codex
+
+Run the included installer:
+
+```bash
 bash scripts/install-skill.sh
 ```
 
-The installer creates:
+It creates:
 
 ```text
 ~/.agents/skills/jev-review
@@ -113,11 +126,15 @@ You can verify the CLI separately with:
 jev-review --help
 ```
 
-### 2. Use it from the project you want to review
+#### Other Agent Skills-compatible tools
 
-Open the target repository in Codex. You do **not** need to copy jev-review into that repository.
+Use `skills/jev-review/` as the Skill directory and install/link it according to your agent's Agent Skills documentation. The core workflow is defined in `SKILL.md` and `references/category-review.md`; `agents/openai.yaml` is optional OpenAI-specific metadata and is not required by the core workflow.
 
-Invoke the Skill explicitly:
+### 3. Use it from the project you want to review
+
+Open the target repository in your coding agent. You do **not** need to copy jev-review into that repository.
+
+In Codex, invoke the Skill explicitly:
 
 ```text
 $jev-review Review this project.
@@ -131,9 +148,11 @@ $jev-review Review this repository for concrete bugs and security issues.
 
 You can also ask Codex for a project-wide Jev review without explicitly naming the Skill; Codex may select it from the Skill description. Using `$jev-review` is recommended when you want to guarantee this workflow is used.
 
-### 3. What the Skill does
+For Claude Code or another compatible agent, invoke the Skill using that agent's supported Skill syntax.
 
-Codex follows this pipeline automatically:
+### 4. What the Skill does
+
+The coding agent follows this pipeline:
 
 ```text
 target repository
@@ -146,7 +165,7 @@ jev-review .
       +-- .jev-review/category-handoff.json
                   |
                   v
-          Codex deep review
+          coding-agent deep review
           - reads each selected file in full
           - focuses on the selected categories
           - may follow necessary dependencies/context
@@ -160,15 +179,15 @@ jev-review .
           findings summarized to you
 ```
 
-The separation is intentional: Jev decides **where to spend review effort**, while Codex determines whether a concrete problem actually exists and explains the root cause.
+The separation is intentional: Jev decides **where to spend review effort**, while the detailed reviewer determines whether a concrete problem actually exists and explains the root cause.
 
-### 4. Generated files
+### 5. Generated files
 
 The target repository gets a local `.jev-review/` directory. The main production artifacts are:
 
 - `report.json` — complete Jev screening output. This is useful for diagnostics, but the deep reviewer does not use its scores as evidence.
-- `category-handoff.json` — the boundary between Jev and Codex. It contains only selected file names and review categories.
-- `category-verified-report.json` — concrete findings produced by Codex after full-file review.
+- `category-handoff.json` — the boundary between Jev and the detailed reviewer. It contains only selected file names and review categories.
+- `category-verified-report.json` — concrete findings produced by the detailed reviewer after full-file review.
 
 The Skill deliberately avoids reading baseline, stability, previous verification, and experimental evaluation artifacts during a real review.
 
