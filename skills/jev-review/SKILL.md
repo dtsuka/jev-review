@@ -1,38 +1,37 @@
 ---
 name: jev-review
-description: Project-wide code-review triage with Jev followed by focused deep review. Use when asked to review a repository for bugs, security, refactoring, performance, error handling, or type-safety issues while reducing the amount of code sent to deep review.
+description: Review a software repository with Jev triage followed by focused full-file deep review. Use for project-wide bug, security, performance, error-handling, refactoring, or type-safety review when the user wants broad coverage without sending every file to deep review.
 ---
 
 # Jev Review
 
-Use the `jev-review` CLI as the screening stage, then perform deep review only on selected files.
+Run Jev as a screening stage, then deep-review the selected files. The production handoff is **file + category**. Jev scores and chunk locations are intentionally hidden from deep review to reduce anchoring.
 
-## Workflow
+## Run
 
-1. From the jev-review repository, run the scanner against the target project:
-   `pnpm dev -- <project-root>`
-2. Generate the category-only handoff:
-   `pnpm category-handoff <project-root>`
-3. Read only `<project-root>/.jev-review/category-handoff.json` from the generated review artifacts.
-4. For every listed file, read the entire file and investigate the listed categories. Categories are review requirements, not proof of defects.
-5. Follow the detailed rules in `references/category-review.md`.
-6. Write `<project-root>/.jev-review/category-verified-report.json`.
+1. From the target repository, run:
+   `jev-review .`
+2. Read `.jev-review/category-handoff.json`.
+3. Read `references/category-review.md`.
+4. For every handoff file, read the complete file and investigate every listed category.
+5. Follow dependencies, callers, callees, types, and configuration only when needed to establish or reject a concrete issue.
+6. Write `.jev-review/category-verified-report.json` using the schema in the reference.
+7. Summarize concrete findings for the user. Distinguish confirmed findings from areas that merely received extra scrutiny.
 
-Do not use Jev scores as evidence. Do not restrict investigation to Jev chunks. Do not inspect baseline/evaluation artifacts during a real review.
+If `jev-review` is not available on PATH, stop and tell the user to install/link the CLI. Do not silently replace Jev screening with an ordinary whole-project review.
+
+## Rules
+
+- A selected category is a review requirement, not evidence of a defect.
+- Do not use Jev probability scores as evidence.
+- Do not inspect Jev chunk scores or suspicious line ranges.
+- Do not restrict deep review to a chunk; review the entire selected file.
+- Do not read baseline, prior verification, evaluation, stability, or experiment artifacts during a real review.
+- Do not report style-only concerns or hypothetical risks without a concrete failure mode.
+- De-duplicate root causes.
+- A concrete issue may ultimately be classified differently from the category that led to its discovery.
+- If screening forces a file because of an upstream failure, review the whole file for all requested categories.
 
 ## Categories
 
-- bug
-- security
-- refactor
-- performance
-- error_handling
-- type_safety
-
-## Fail-open behavior
-
-If screening reports a file as forced because a chunk failed, review the whole file for all requested categories.
-
-## Evaluation-only material
-
-Files such as baseline reports, attention reports, handoff verification reports, and stability runs exist for development of this workflow. They must not influence a production review.
+`bug`, `security`, `refactor`, `performance`, `error_handling`, `type_safety`.
