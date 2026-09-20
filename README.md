@@ -70,11 +70,130 @@ The category handoff is generated automatically by the CLI. `pnpm category-hando
 
 ## Codex Skill
 
-After installing the skill, invoke it explicitly in Codex with `$jev-review`, or ask for a project-wide Jev review and let Codex match the skill description.
+The recommended way to use jev-review is as a Codex Skill. Once installed, Codex can run the Jev screening step and the focused deep review as one workflow.
 
-The skill runs Jev screening, reads only the production category handoff, reviews the complete selected files for the requested categories, and writes `.jev-review/category-verified-report.json`.
+### 1. Install the CLI and Skill
 
-See `skills/jev-review/SKILL.md` for the workflow and `skills/jev-review/references/category-review.md` for the deep-review contract.
+Clone this repository and install its dependencies:
+
+```bash
+git clone https://github.com/dtsuka/jev-review.git
+cd jev-review
+
+pnpm install
+cp .env.example .env
+# Edit .env and set TYPESAFE_API_KEY.
+
+pnpm build
+```
+
+Make the `jev-review` command available globally, then install the Skill:
+
+```bash
+pnpm link --global
+bash scripts/install-skill.sh
+```
+
+The installer creates:
+
+```text
+~/.agents/skills/jev-review
+  -> <path-to-this-repository>/skills/jev-review
+```
+
+It is a symbolic link rather than a copy, so updating this repository also updates the installed Skill. If Codex does not notice a newly installed Skill, restart Codex.
+
+You can verify the CLI separately with:
+
+```bash
+jev-review --help
+```
+
+### 2. Use it from the project you want to review
+
+Open the target repository in Codex. You do **not** need to copy jev-review into that repository.
+
+Invoke the Skill explicitly:
+
+```text
+$jev-review Review this project.
+```
+
+For example:
+
+```text
+$jev-review Review this repository for concrete bugs and security issues.
+```
+
+You can also ask Codex for a project-wide Jev review without explicitly naming the Skill; Codex may select it from the Skill description. Using `$jev-review` is recommended when you want to guarantee this workflow is used.
+
+### 3. What the Skill does
+
+Codex follows this pipeline automatically:
+
+```text
+target repository
+      |
+      v
+jev-review .
+      |
+      +-- .jev-review/report.json
+      |
+      +-- .jev-review/category-handoff.json
+                  |
+                  v
+          Codex deep review
+          - reads each selected file in full
+          - focuses on the selected categories
+          - may follow necessary dependencies/context
+          - does not use Jev scores as evidence
+          - does not see suspicious chunk locations
+                  |
+                  v
+      .jev-review/category-verified-report.json
+                  |
+                  v
+          findings summarized to you
+```
+
+The separation is intentional: Jev decides **where to spend review effort**, while Codex determines whether a concrete problem actually exists and explains the root cause.
+
+### 4. Generated files
+
+The target repository gets a local `.jev-review/` directory. The main production artifacts are:
+
+- `report.json` — complete Jev screening output. This is useful for diagnostics, but the deep reviewer does not use its scores as evidence.
+- `category-handoff.json` — the boundary between Jev and Codex. It contains only selected file names and review categories.
+- `category-verified-report.json` — concrete findings produced by Codex after full-file review.
+
+The Skill deliberately avoids reading baseline, stability, previous verification, and experimental evaluation artifacts during a real review.
+
+### Updating or uninstalling
+
+Because the Skill is symlinked, updating is normally just:
+
+```bash
+cd /path/to/jev-review
+git pull
+pnpm install
+pnpm build
+```
+
+There is no need to run the Skill installer again unless the link was removed.
+
+To uninstall the Skill, remove only its symlink:
+
+```bash
+rm ~/.agents/skills/jev-review
+```
+
+If you no longer want the globally linked CLI, also run:
+
+```bash
+pnpm unlink --global jev-review
+```
+
+See `skills/jev-review/SKILL.md` for the agent workflow and `skills/jev-review/references/category-review.md` for the deep-review contract.
 
 ## Why file + category handoff?
 
