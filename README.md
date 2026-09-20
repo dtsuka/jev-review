@@ -1,8 +1,18 @@
 # jev-review
 
-Project-wide code review triage powered by TypeSafe AI's Jev System One model.
+Project-wide code-review triage powered by TypeSafe AI's Jev System One model, designed to hand a smaller, focused set of files to Codex or another deep reviewer.
 
-`jev-review` scans source files and asks Jev for probabilistic decisions about whether each file warrants deeper review. It is intended as a fast screening layer before a coding agent or human performs detailed investigation.
+The production workflow is:
+
+```text
+repository
+  -> Jev screening
+  -> selected file + review categories
+  -> full-file deep review
+  -> concrete findings
+```
+
+Jev decides **where and in which categories to spend review effort**. It does not diagnose the final root cause. Deep review sees the complete selected file, but not Jev scores or suspicious line ranges, reducing anchoring on the screening output.
 
 ## Checks
 
@@ -20,52 +30,80 @@ Requires Node.js 20+ and TypeSafe AI API access.
 ```bash
 pnpm install
 cp .env.example .env
-# Edit .env and set TYPESAFE_API_KEY.
+# Set TYPESAFE_API_KEY in .env
 pnpm build
+
+# Make the CLI available to Codex from any repository.
+pnpm link --global
+
+# Install the reusable Codex skill.
+bash scripts/install-skill.sh
 ```
 
-## Usage
+Codex currently discovers user skills from `~/.agents/skills`. The installer creates a symlink, so edits in this repository are immediately reflected in the installed skill.
+
+## CLI usage
 
 ```bash
-# Review the current project
-node dist/cli.js .
+# Production scan
+jev-review .
 
 # Development mode
 pnpm dev -- .
 
 # Security only
-pnpm dev -- . --checks security
+jev-review . --checks security
 
-# Only treat >= 80% as attention-worthy
-pnpm dev -- . --threshold 0.8
-
-# Limit an exploratory run
-pnpm dev -- . --max-files 20
+# Override all thresholds
+jev-review . --threshold 0.8
 ```
 
-The full machine-readable result is written to `.jev-review/report.json`.
+A scan writes:
 
-## Intended workflow
+- `.jev-review/report.json` — full Jev scores and diagnostics.
+- `.jev-review/runs/report-*.json` — archived screening runs.
+- `.jev-review/category-handoff.json` — production deep-review input containing only selected files and categories.
 
-```text
-project
-  -> jev-review broad screening
-  -> suspicious files
-  -> Codex / Cursor / human deep review
-  -> verify finding and propose fix
+The category handoff is generated automatically by the CLI. `pnpm category-handoff <project>` remains available for regenerating it from an existing report.
+
+## Codex Skill
+
+After installing the skill, invoke it explicitly in Codex with `$jev-review`, or ask for a project-wide Jev review and let Codex match the skill description.
+
+The skill runs Jev screening, reads only the production category handoff, reviews the complete selected files for the requested categories, and writes `.jev-review/category-verified-report.json`.
+
+See `skills/jev-review/SKILL.md` for the workflow and `skills/jev-review/references/category-review.md` for the deep-review contract.
+
+## Why file + category handoff?
+
+Experiments in this repository compare several handoff strategies: strict chunks, chunk attention hints, blind selected files, and category-only review. The current production choice is **file + category**:
+
+- chunks remain useful internally for keeping Jev requests bounded;
+- deep review is not constrained to those chunks;
+- scores and line hints are hidden from the deep reviewer;
+- categories direct attention without asserting that a defect exists.
+
+Evaluation scripts are development tools and must not be read by the reviewer during a real review.
+
+## Safety and limitations
+
+Jev is a triage layer, not an authoritative static analyzer. A high probability does not prove an issue exists, and a low probability does not prove a file is safe. Cross-file issues can still be missed, file-kind policies can suppress categories, and thresholds remain project-dependent.
+
+For security-sensitive projects, combine this workflow with deterministic tools such as the language type checker, linters, dependency auditing, Semgrep, or CodeQL as appropriate.
+
+## Evaluation
+
+Development/evaluation commands currently include:
+
+```bash
+pnpm evaluate <project>
+pnpm stability <project>
+pnpm evaluate:handoff <project>
+pnpm evaluate:attention <project>
+pnpm evaluate:category <project>
 ```
 
-Jev is used for triage, not as an authoritative static analyzer. A high probability means the file should receive deeper review; it does not prove that a vulnerability or bug exists. Likewise, low probability does not prove a file is safe.
-
-For security-sensitive projects, use this alongside deterministic tools such as the language type checker, linters, dependency auditing, Semgrep or CodeQL as appropriate.
-
-## Current MVP limitations
-
-- First pass is primarily file-level; cross-file bugs can be missed.
-- Basic project context is attached, but imported source files are not yet expanded into the request.
-- Large source files are truncated.
-- Jev's early-access API may evolve; the response adapter is isolated in `src/jev.ts`.
-- Thresholds need calibration against real projects and seeded known issues before they should drive automation.
+These are for calibration and experiments, not the production Skill workflow.
 
 ## Environment
 
@@ -73,7 +111,7 @@ For security-sensitive projects, use this alongside deterministic tools such as 
 TYPESAFE_API_KEY=...
 ```
 
-The CLI and benchmark commands automatically load `.env` from the current working directory. Existing shell environment variables take precedence. Do not commit API keys.
+The CLI automatically loads `.env` from its current environment. Existing shell environment variables take precedence. Do not commit API keys.
 
 ## License
 
