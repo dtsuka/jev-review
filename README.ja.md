@@ -35,8 +35,10 @@ Node.js 20+ と TypeSafe AI API へのアクセスが必要です。
 
 ```bash
 pnpm install
-cp .env.example .env
-# .env に TYPESAFE_API_KEY を設定
+
+# 現在のシェルセッションに API キーを設定
+export TYPESAFE_API_KEY='your-api-key'
+
 pnpm build
 
 # どのリポジトリからでも Codex が CLI を実行できるようにする
@@ -89,8 +91,9 @@ git clone https://github.com/dtsuka/jev-review.git
 cd jev-review
 
 pnpm install
-cp .env.example .env
-# .env を編集して TYPESAFE_API_KEY を設定
+
+# 現在のシェルセッションに API キーを設定
+export TYPESAFE_API_KEY='your-api-key'
 
 pnpm build
 ```
@@ -275,11 +278,22 @@ pnpm evaluate:category <project>
 
 ## 環境変数
 
-```text
-TYPESAFE_API_KEY=...
+jev-review の実行には TypeSafe AI の API キーが必要です。CLI や Skill として利用する場合は、環境変数に設定します。
+
+```bash
+export TYPESAFE_API_KEY='your-api-key'
 ```
 
-CLI は現在の環境から `.env` を自動的に読み込みます。シェルですでに設定されている環境変数が優先されます。API キーをコミットしないでください。
+この設定は現在のシェルセッションで有効です。永続化する場合は、使用しているシェルの設定ファイル（例: `~/.zshrc`、`~/.bashrc` など）に上記の `export` を追加し、設定を再読み込みするか新しいターミナルを起動してください。
+
+jev-review 自体を開発する場合は、代わりにリポジトリ内の `.env` も利用できます。
+
+```bash
+cp .env.example .env
+# .env を編集して TYPESAFE_API_KEY を設定
+```
+
+シェルですでに設定されている環境変数が優先されます。API キーをコミットしないでください。
 
 ## ライセンス
 
