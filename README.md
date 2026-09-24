@@ -35,8 +35,10 @@ Requires Node.js 20+ and TypeSafe AI API access.
 
 ```bash
 pnpm install
-cp .env.example .env
-# Set TYPESAFE_API_KEY in .env
+
+# Set the API key for the current shell session.
+export TYPESAFE_API_KEY='your-api-key'
+
 pnpm build
 
 # Make the CLI available to Codex from any repository.
@@ -87,8 +89,9 @@ git clone https://github.com/dtsuka/jev-review.git
 cd jev-review
 
 pnpm install
-cp .env.example .env
-# Edit .env and set TYPESAFE_API_KEY.
+
+# Set the API key for the current shell session.
+export TYPESAFE_API_KEY='your-api-key'
 
 pnpm build
 ```
@@ -251,11 +254,22 @@ These are for calibration and experiments, not the production Skill workflow.
 
 ## Environment
 
-```text
-TYPESAFE_API_KEY=...
+jev-review requires a TypeSafe AI API key. For CLI or Skill usage, set it as an environment variable:
+
+```bash
+export TYPESAFE_API_KEY='your-api-key'
 ```
 
-The CLI automatically loads `.env` from its current environment. Existing shell environment variables take precedence. Do not commit API keys.
+This sets the key for the current shell session. To make it persistent, add the `export` command to your shell's startup file, such as `~/.zshrc`, `~/.bashrc`, or the equivalent for your shell, then reload the shell configuration or start a new terminal session.
+
+When developing jev-review itself, you can alternatively use a local `.env` file:
+
+```bash
+cp .env.example .env
+# Edit .env and set TYPESAFE_API_KEY.
+```
+
+Existing shell environment variables take precedence. Do not commit API keys.
 
 ## License
 
